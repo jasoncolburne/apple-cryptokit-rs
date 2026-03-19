@@ -160,8 +160,8 @@ mod quantum_tests {
         // 验证密钥和签名大小
         assert_eq!(
             private_key.to_bytes().len(),
-            4032,
-            "ML-DSA65 private key should be 4032 bytes"
+            64,
+            "ML-DSA65 seed should be 64 bytes"
         );
         assert_eq!(
             public_key.to_bytes().len(),
@@ -200,8 +200,8 @@ mod quantum_tests {
         // 验证密钥和签名大小
         assert_eq!(
             private_key.to_bytes().len(),
-            4896,
-            "ML-DSA87 private key should be 4896 bytes"
+            64,
+            "ML-DSA87 seed should be 64 bytes"
         );
         assert_eq!(
             public_key.to_bytes().len(),
@@ -375,5 +375,119 @@ mod quantum_tests {
                 i
             );
         }
+    }
+
+    #[test]
+    fn test_mldsa65_seed_roundtrip() {
+        let private_key =
+            MLDsa65::generate_private_key().expect("Failed to generate ML-DSA65 key");
+        let public_key = private_key.public_key();
+
+        let seed = private_key.to_bytes();
+        let restored = apple_cryptokit::quantum::MLDsa65PrivateKey::from_bytes(&seed)
+            .expect("Failed to restore from seed");
+
+        let message = b"roundtrip test";
+        let sig = restored.sign(message).expect("Failed to sign with restored key");
+        let valid = public_key
+            .verify(message, &sig)
+            .expect("Failed to verify");
+        assert!(valid, "Signature from restored key should be valid");
+    }
+
+    #[test]
+    fn test_mldsa87_seed_roundtrip() {
+        let private_key =
+            MLDsa87::generate_private_key().expect("Failed to generate ML-DSA87 key");
+        let public_key = private_key.public_key();
+
+        let seed = private_key.to_bytes();
+        let restored = apple_cryptokit::quantum::MLDsa87PrivateKey::from_bytes(&seed)
+            .expect("Failed to restore from seed");
+
+        let message = b"roundtrip test";
+        let sig = restored.sign(message).expect("Failed to sign with restored key");
+        let valid = public_key
+            .verify(message, &sig)
+            .expect("Failed to verify");
+        assert!(valid, "Signature from restored key should be valid");
+    }
+
+    #[test]
+    fn test_se_mldsa65_generate_and_sign() {
+        let se_key = apple_cryptokit::quantum::SEMLDsa65PrivateKey::generate()
+            .expect("Failed to generate SE ML-DSA65 key");
+
+        let public_key = se_key.public_key();
+        assert_eq!(public_key.to_bytes().len(), 1952);
+
+        let message = b"secure enclave test";
+        let sig = se_key.sign(message).expect("Failed to sign with SE key");
+        assert!(sig.len() <= 3309);
+
+        let valid = public_key
+            .verify(message, &sig)
+            .expect("Failed to verify SE signature");
+        assert!(valid, "SE ML-DSA65 signature should be valid");
+    }
+
+    #[test]
+    fn test_se_mldsa87_generate_and_sign() {
+        let se_key = apple_cryptokit::quantum::SEMLDsa87PrivateKey::generate()
+            .expect("Failed to generate SE ML-DSA87 key");
+
+        let public_key = se_key.public_key();
+        assert_eq!(public_key.to_bytes().len(), 2592);
+
+        let message = b"secure enclave test";
+        let sig = se_key.sign(message).expect("Failed to sign with SE key");
+        assert!(sig.len() <= 4627);
+
+        let valid = public_key
+            .verify(message, &sig)
+            .expect("Failed to verify SE signature");
+        assert!(valid, "SE ML-DSA87 signature should be valid");
+    }
+
+    #[test]
+    fn test_se_mldsa65_persistence_roundtrip() {
+        let se_key = apple_cryptokit::quantum::SEMLDsa65PrivateKey::generate()
+            .expect("Failed to generate SE ML-DSA65 key");
+
+        let data_rep = se_key.data_representation();
+        let public_key = se_key.public_key();
+
+        let restored = apple_cryptokit::quantum::SEMLDsa65PrivateKey::from_data_representation(
+            data_rep,
+            public_key,
+        );
+
+        let message = b"persistence roundtrip";
+        let sig = restored.sign(message).expect("Failed to sign with restored SE key");
+        let valid = public_key
+            .verify(message, &sig)
+            .expect("Failed to verify");
+        assert!(valid, "Restored SE key signature should be valid");
+    }
+
+    #[test]
+    fn test_se_mldsa87_persistence_roundtrip() {
+        let se_key = apple_cryptokit::quantum::SEMLDsa87PrivateKey::generate()
+            .expect("Failed to generate SE ML-DSA87 key");
+
+        let data_rep = se_key.data_representation();
+        let public_key = se_key.public_key();
+
+        let restored = apple_cryptokit::quantum::SEMLDsa87PrivateKey::from_data_representation(
+            data_rep,
+            public_key,
+        );
+
+        let message = b"persistence roundtrip";
+        let sig = restored.sign(message).expect("Failed to sign with restored SE key");
+        let valid = public_key
+            .verify(message, &sig)
+            .expect("Failed to verify");
+        assert!(valid, "Restored SE key signature should be valid");
     }
 }

@@ -45,7 +45,8 @@ pub use kem::{
 
 pub use signature::{
     DigitalSignatureAlgorithm, MLDsa65, MLDsa65PrivateKey, MLDsa65PublicKey, MLDsa87,
-    MLDsa87PrivateKey, MLDsa87PublicKey, SignaturePrivateKey, SignaturePublicKey,
+    MLDsa87PrivateKey, MLDsa87PublicKey, SEMLDsa65PrivateKey, SEMLDsa87PrivateKey,
+    SignaturePrivateKey, SignaturePublicKey,
 };
 
 /// Generic trait for quantum-safe algorithms

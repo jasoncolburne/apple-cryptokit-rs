@@ -75,11 +75,11 @@ impl DigitalSignatureAlgorithm for MLDsa65 {
 
     fn generate_private_key() -> Result<Self::PrivateKey> {
         unsafe {
-            let mut private_key_bytes = vec![0u8; MLDSA65_PRIVATE_KEY_SIZE];
+            let mut seed_bytes = vec![0u8; MLDSA65_SEED_SIZE];
             let mut public_key_bytes = vec![0u8; MLDSA65_PUBLIC_KEY_SIZE];
 
             let result = swift_mldsa65_generate_keypair(
-                private_key_bytes.as_mut_ptr(),
+                seed_bytes.as_mut_ptr(),
                 public_key_bytes.as_mut_ptr(),
             );
 
@@ -88,7 +88,7 @@ impl DigitalSignatureAlgorithm for MLDsa65 {
             }
 
             Ok(MLDsa65PrivateKey {
-                bytes: private_key_bytes,
+                bytes: seed_bytes,
                 public_key: MLDsa65PublicKey {
                     bytes: public_key_bytes,
                 },
@@ -138,7 +138,7 @@ impl SignaturePrivateKey for MLDsa65PrivateKey {
     }
 
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        if bytes.len() != MLDSA65_PRIVATE_KEY_SIZE {
+        if bytes.len() != MLDSA65_SEED_SIZE {
             return Err(CryptoKitError::InvalidInput(
                 "Invalid private key length".to_string(),
             ));
@@ -232,11 +232,11 @@ impl DigitalSignatureAlgorithm for MLDsa87 {
 
     fn generate_private_key() -> Result<Self::PrivateKey> {
         unsafe {
-            let mut private_key_bytes = vec![0u8; MLDSA87_PRIVATE_KEY_SIZE];
+            let mut seed_bytes = vec![0u8; MLDSA87_SEED_SIZE];
             let mut public_key_bytes = vec![0u8; MLDSA87_PUBLIC_KEY_SIZE];
 
             let result = swift_mldsa87_generate_keypair(
-                private_key_bytes.as_mut_ptr(),
+                seed_bytes.as_mut_ptr(),
                 public_key_bytes.as_mut_ptr(),
             );
 
@@ -245,7 +245,7 @@ impl DigitalSignatureAlgorithm for MLDsa87 {
             }
 
             Ok(MLDsa87PrivateKey {
-                bytes: private_key_bytes,
+                bytes: seed_bytes,
                 public_key: MLDsa87PublicKey {
                     bytes: public_key_bytes,
                 },
@@ -295,7 +295,7 @@ impl SignaturePrivateKey for MLDsa87PrivateKey {
     }
 
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        if bytes.len() != MLDSA87_PRIVATE_KEY_SIZE {
+        if bytes.len() != MLDSA87_SEED_SIZE {
             return Err(CryptoKitError::InvalidInput(
                 "Invalid private key length".to_string(),
             ));
@@ -368,21 +368,178 @@ impl SignaturePublicKey for MLDsa87PublicKey {
     }
 }
 
-// Constant definitions - According to NIST standard
+// MARK: - Secure Enclave types
+
+/// Maximum size for Secure Enclave data representation (opaque key blob)
+const SE_DATA_REPRESENTATION_MAX_SIZE: usize = 16384;
+
+/// Secure Enclave ML-DSA65 private key handle (opaque data representation)
+pub struct SEMLDsa65PrivateKey {
+    data_representation: Vec<u8>,
+    public_key: MLDsa65PublicKey,
+}
+
+impl SEMLDsa65PrivateKey {
+    /// Generate a new key in the Secure Enclave
+    pub fn generate() -> Result<Self> {
+        unsafe {
+            let mut data_rep = vec![0u8; SE_DATA_REPRESENTATION_MAX_SIZE];
+            let mut data_rep_len: usize = 0;
+            let mut public_key_bytes = vec![0u8; MLDSA65_PUBLIC_KEY_SIZE];
+
+            let result = swift_se_mldsa65_generate_keypair(
+                data_rep.as_mut_ptr(),
+                &mut data_rep_len,
+                public_key_bytes.as_mut_ptr(),
+            );
+
+            if result != 0 {
+                return Err(CryptoKitError::KeyGenerationFailed);
+            }
+
+            data_rep.truncate(data_rep_len);
+
+            Ok(SEMLDsa65PrivateKey {
+                data_representation: data_rep,
+                public_key: MLDsa65PublicKey {
+                    bytes: public_key_bytes,
+                },
+            })
+        }
+    }
+
+    pub fn public_key(&self) -> &MLDsa65PublicKey {
+        &self.public_key
+    }
+
+    pub fn sign(&self, message: &[u8]) -> Result<Vec<u8>> {
+        unsafe {
+            let mut signature = vec![0u8; MLDSA65_SIGNATURE_SIZE];
+            let mut signature_len = MLDSA65_SIGNATURE_SIZE;
+
+            let result = swift_se_mldsa65_sign(
+                self.data_representation.as_ptr(),
+                self.data_representation.len(),
+                message.as_ptr(),
+                message.len(),
+                signature.as_mut_ptr(),
+                &mut signature_len,
+            );
+
+            if result != 0 {
+                return Err(CryptoKitError::SigningFailed);
+            }
+
+            signature.truncate(signature_len);
+            Ok(signature)
+        }
+    }
+
+    /// Opaque data representation for persistence
+    pub fn data_representation(&self) -> &[u8] {
+        &self.data_representation
+    }
+
+    /// Restore from persisted data representation
+    pub fn from_data_representation(data: &[u8], public_key: &MLDsa65PublicKey) -> Self {
+        SEMLDsa65PrivateKey {
+            data_representation: data.to_vec(),
+            public_key: public_key.clone(),
+        }
+    }
+}
+
+/// Secure Enclave ML-DSA87 private key handle (opaque data representation)
+pub struct SEMLDsa87PrivateKey {
+    data_representation: Vec<u8>,
+    public_key: MLDsa87PublicKey,
+}
+
+impl SEMLDsa87PrivateKey {
+    /// Generate a new key in the Secure Enclave
+    pub fn generate() -> Result<Self> {
+        unsafe {
+            let mut data_rep = vec![0u8; SE_DATA_REPRESENTATION_MAX_SIZE];
+            let mut data_rep_len: usize = 0;
+            let mut public_key_bytes = vec![0u8; MLDSA87_PUBLIC_KEY_SIZE];
+
+            let result = swift_se_mldsa87_generate_keypair(
+                data_rep.as_mut_ptr(),
+                &mut data_rep_len,
+                public_key_bytes.as_mut_ptr(),
+            );
+
+            if result != 0 {
+                return Err(CryptoKitError::KeyGenerationFailed);
+            }
+
+            data_rep.truncate(data_rep_len);
+
+            Ok(SEMLDsa87PrivateKey {
+                data_representation: data_rep,
+                public_key: MLDsa87PublicKey {
+                    bytes: public_key_bytes,
+                },
+            })
+        }
+    }
+
+    pub fn public_key(&self) -> &MLDsa87PublicKey {
+        &self.public_key
+    }
+
+    pub fn sign(&self, message: &[u8]) -> Result<Vec<u8>> {
+        unsafe {
+            let mut signature = vec![0u8; MLDSA87_SIGNATURE_SIZE];
+            let mut signature_len = MLDSA87_SIGNATURE_SIZE;
+
+            let result = swift_se_mldsa87_sign(
+                self.data_representation.as_ptr(),
+                self.data_representation.len(),
+                message.as_ptr(),
+                message.len(),
+                signature.as_mut_ptr(),
+                &mut signature_len,
+            );
+
+            if result != 0 {
+                return Err(CryptoKitError::SigningFailed);
+            }
+
+            signature.truncate(signature_len);
+            Ok(signature)
+        }
+    }
+
+    /// Opaque data representation for persistence
+    pub fn data_representation(&self) -> &[u8] {
+        &self.data_representation
+    }
+
+    /// Restore from persisted data representation
+    pub fn from_data_representation(data: &[u8], public_key: &MLDsa87PublicKey) -> Self {
+        SEMLDsa87PrivateKey {
+            data_representation: data.to_vec(),
+            public_key: public_key.clone(),
+        }
+    }
+}
+
+// Constant definitions
 const MLDSA65_PUBLIC_KEY_SIZE: usize = 1952;
-const MLDSA65_PRIVATE_KEY_SIZE: usize = 4032;
-const MLDSA65_SIGNATURE_SIZE: usize = 3309; // Maximum signature length
+const MLDSA65_SEED_SIZE: usize = 64;
+const MLDSA65_SIGNATURE_SIZE: usize = 3309;
 
 const MLDSA87_PUBLIC_KEY_SIZE: usize = 2592;
-const MLDSA87_PRIVATE_KEY_SIZE: usize = 4896;
-const MLDSA87_SIGNATURE_SIZE: usize = 4627; // Maximum signature length
+const MLDSA87_SEED_SIZE: usize = 64;
+const MLDSA87_SIGNATURE_SIZE: usize = 4627;
 
 // Swift FFI declarations
 extern "C" {
     // ML-DSA65
-    fn swift_mldsa65_generate_keypair(private_key: *mut u8, public_key: *mut u8) -> i32;
+    fn swift_mldsa65_generate_keypair(seed: *mut u8, public_key: *mut u8) -> i32;
     fn swift_mldsa65_sign(
-        private_key: *const u8,
+        seed: *const u8,
         message: *const u8,
         message_len: usize,
         signature: *mut u8,
@@ -395,12 +552,12 @@ extern "C" {
         signature: *const u8,
         signature_len: usize,
     ) -> i32;
-    fn swift_mldsa65_derive_public_key(private_key: *const u8, public_key: *mut u8) -> i32;
+    fn swift_mldsa65_derive_public_key(seed: *const u8, public_key: *mut u8) -> i32;
 
     // ML-DSA87
-    fn swift_mldsa87_generate_keypair(private_key: *mut u8, public_key: *mut u8) -> i32;
+    fn swift_mldsa87_generate_keypair(seed: *mut u8, public_key: *mut u8) -> i32;
     fn swift_mldsa87_sign(
-        private_key: *const u8,
+        seed: *const u8,
         message: *const u8,
         message_len: usize,
         signature: *mut u8,
@@ -413,5 +570,35 @@ extern "C" {
         signature: *const u8,
         signature_len: usize,
     ) -> i32;
-    fn swift_mldsa87_derive_public_key(private_key: *const u8, public_key: *mut u8) -> i32;
+    fn swift_mldsa87_derive_public_key(seed: *const u8, public_key: *mut u8) -> i32;
+
+    // Secure Enclave ML-DSA65
+    fn swift_se_mldsa65_generate_keypair(
+        data_representation: *mut u8,
+        data_representation_len: *mut usize,
+        public_key: *mut u8,
+    ) -> i32;
+    fn swift_se_mldsa65_sign(
+        data_representation: *const u8,
+        data_representation_len: usize,
+        message: *const u8,
+        message_len: usize,
+        signature: *mut u8,
+        signature_len: *mut usize,
+    ) -> i32;
+
+    // Secure Enclave ML-DSA87
+    fn swift_se_mldsa87_generate_keypair(
+        data_representation: *mut u8,
+        data_representation_len: *mut usize,
+        public_key: *mut u8,
+    ) -> i32;
+    fn swift_se_mldsa87_sign(
+        data_representation: *const u8,
+        data_representation_len: usize,
+        message: *const u8,
+        message_len: usize,
+        signature: *mut u8,
+        signature_len: *mut usize,
+    ) -> i32;
 }
