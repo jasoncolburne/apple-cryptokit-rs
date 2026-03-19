@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import LocalAuthentication
 
 // MARK: - ML-DSA65
 
@@ -286,7 +287,11 @@ public func swiftSEMLDsa65Sign(
     if #available(macOS 26, iOS 26, *) {
         do {
             let keyData = Data(bytes: dataRepresentation, count: dataRepresentationLen)
-            let key = try SecureEnclave.MLDSA65.PrivateKey(dataRepresentation: keyData)
+            let context = LAContext()
+            let key = try SecureEnclave.MLDSA65.PrivateKey(
+                dataRepresentation: keyData,
+                authenticationContext: context
+            )
             let msgData = Data(bytes: message, count: messageLen)
             let sigData = try key.signature(for: msgData)
 
@@ -374,7 +379,11 @@ public func swiftSEMLDsa87Sign(
     if #available(macOS 26, iOS 26, *) {
         do {
             let keyData = Data(bytes: dataRepresentation, count: dataRepresentationLen)
-            let key = try SecureEnclave.MLDSA87.PrivateKey(dataRepresentation: keyData)
+            let context = LAContext()
+            let key = try SecureEnclave.MLDSA87.PrivateKey(
+                dataRepresentation: keyData,
+                authenticationContext: context
+            )
             let msgData = Data(bytes: message, count: messageLen)
             let sigData = try key.signature(for: msgData)
 
