@@ -1,6 +1,5 @@
 import CryptoKit
 import Foundation
-import LocalAuthentication
 
 // MARK: - P-256 椭圆曲线密码学模块
 
@@ -137,52 +136,14 @@ func swift_p256_key_agreement(
 
 // MARK: - Secure Enclave P-256
 
-/// Access control modes for Secure Enclave keys (ascending security):
-///   0 = none (privateKeyUsage only)
-///   1 = passcode or biometry (userPresence + privateKeyUsage)
-///   2 = biometry (biometryAny + privateKeyUsage)
-///   3 = unchanging biometry (biometryCurrentSet + privateKeyUsage) — invalidated if biometry enrollment changes
-private func makeAccessControl(_ mode: Int32) -> SecAccessControl? {
-    let flags: SecAccessControlCreateFlags
-    switch mode {
-    case 1: flags = [.privateKeyUsage, .userPresence]
-    case 2: flags = [.privateKeyUsage, .biometryAny]
-    case 3: flags = [.privateKeyUsage, .biometryCurrentSet]
-    default: return nil
-    }
-    var error: Unmanaged<CFError>?
-    #if targetEnvironment(simulator)
-    let accessibility = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
-    #else
-    let accessibility = kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly
-    #endif
-    let result = SecAccessControlCreateWithFlags(nil, accessibility, flags, &error)
-    if let error = error {
-        NSLog("SecAccessControlCreateWithFlags failed: \(error.takeRetainedValue())")
-    }
-    return result
-}
-
 @_cdecl("swift_se_p256_generate_keypair")
 public func swiftSEP256GenerateKeypair(
     dataRepresentation: UnsafeMutableRawPointer,
     dataRepresentationLen: UnsafeMutablePointer<Int>,
-    publicKey: UnsafeMutableRawPointer,
-    accessControlMode: Int32
+    publicKey: UnsafeMutableRawPointer
 ) -> Int32 {
     do {
-        let key: SecureEnclave.P256.Signing.PrivateKey
-        if accessControlMode == 0 {
-            key = try SecureEnclave.P256.Signing.PrivateKey()
-        } else {
-            guard let ac = makeAccessControl(accessControlMode) else { return -2 }
-            let context = LAContext()
-            key = try SecureEnclave.P256.Signing.PrivateKey(
-                compactRepresentable: false,
-                accessControl: ac,
-                authenticationContext: context
-            )
-        }
+        let key = try SecureEnclave.P256.Signing.PrivateKey()
         let keyData = key.dataRepresentation
         let pubData = key.publicKey.rawRepresentation
 
@@ -196,12 +157,7 @@ public func swiftSEP256GenerateKeypair(
         }
         return 0
     } catch {
-        let errMsg = "\(error)"
-        errMsg.utf8.enumerated().forEach { (i, b) in
-            if i < 256 { dataRepresentation.storeBytes(of: b, toByteOffset: i, as: UInt8.self) }
-        }
-        dataRepresentationLen.pointee = min(errMsg.utf8.count, 256)
-        return -3
+        return -1
     }
 }
 
@@ -236,11 +192,7 @@ public func swiftSEP256Sign(
 ) -> Int32 {
     do {
         let keyData = Data(bytes: dataRepresentation, count: dataRepresentationLen)
-        let context = LAContext()
-        let key = try SecureEnclave.P256.Signing.PrivateKey(
-            dataRepresentation: keyData,
-            authenticationContext: context
-        )
+        let key = try SecureEnclave.P256.Signing.PrivateKey(dataRepresentation: keyData)
         let msgData = Data(bytes: message, count: messageLen)
         let sigData = try key.signature(for: msgData).rawRepresentation
 
@@ -255,7 +207,6 @@ public func swiftSEP256Sign(
 }
 
 /// Delete an SE P-256 key from the Keychain by its data representation.
-/// Reconstructs the key to find its public key hash, then deletes the Keychain entry.
 @_cdecl("swift_se_p256_delete_key")
 public func swiftSEP256DeleteKey(
     dataRepresentation: UnsafeRawPointer,
@@ -266,18 +217,10 @@ public func swiftSEP256DeleteKey(
         let key = try SecureEnclave.P256.Signing.PrivateKey(dataRepresentation: keyData)
         let pubKeyHash = Data(Insecure.SHA1.hash(data: key.publicKey.rawRepresentation))
 
-        #if targetEnvironment(simulator)
         let query: [String: Any] = [
             kSecClass as String: kSecClassKey,
             kSecAttrApplicationLabel as String: pubKeyHash,
         ]
-        #else
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassKey,
-            kSecAttrApplicationLabel as String: pubKeyHash,
-            kSecAttrTokenID as String: kSecAttrTokenIDSecureEnclave
-        ]
-        #endif
         let status = SecItemDelete(query as CFDictionary)
         return (status == errSecSuccess || status == errSecItemNotFound) ? 0 : -1
     } catch {
@@ -289,16 +232,9 @@ public func swiftSEP256DeleteKey(
 /// Only appropriate during a full state reset.
 @_cdecl("swift_se_delete_all_keys")
 public func swiftSEDeleteAllKeys() -> Int32 {
-    #if targetEnvironment(simulator)
     let query: [String: Any] = [
         kSecClass as String: kSecClassKey,
     ]
-    #else
-    let query: [String: Any] = [
-        kSecClass as String: kSecClassKey,
-        kSecAttrTokenID as String: kSecAttrTokenIDSecureEnclave
-    ]
-    #endif
     let status = SecItemDelete(query as CFDictionary)
     return (status == errSecSuccess || status == errSecItemNotFound) ? 0 : -1
 }

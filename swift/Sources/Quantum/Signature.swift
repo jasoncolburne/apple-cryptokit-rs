@@ -197,48 +197,15 @@ public func swiftMLDsa87DerivePublicKey(
 
 // MARK: - Secure Enclave ML-DSA65
 
-/// Access control modes for Secure Enclave keys (ascending security):
-///   0 = none (privateKeyUsage only)
-///   1 = passcode or biometry (userPresence + privateKeyUsage)
-///   2 = biometry (biometryAny + privateKeyUsage)
-///   3 = unchanging biometry (biometryCurrentSet + privateKeyUsage) — invalidated if biometry enrollment changes
-private func makeAccessControl(_ mode: Int32) -> SecAccessControl? {
-    let flags: SecAccessControlCreateFlags
-    switch mode {
-    case 1: flags = [.privateKeyUsage, .userPresence]
-    case 2: flags = [.privateKeyUsage, .biometryAny]
-    case 3: flags = [.privateKeyUsage, .biometryCurrentSet]
-    default: return nil
-    }
-    var error: Unmanaged<CFError>?
-    #if targetEnvironment(simulator)
-    let accessibility = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
-    #else
-    let accessibility = kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly
-    #endif
-    let result = SecAccessControlCreateWithFlags(nil, accessibility, flags, &error)
-    if let error = error {
-        NSLog("SecAccessControlCreateWithFlags failed: \(error.takeRetainedValue())")
-    }
-    return result
-}
-
 @_cdecl("swift_se_mldsa65_generate_keypair")
 public func swiftSEMLDsa65GenerateKeypair(
     dataRepresentation: UnsafeMutableRawPointer,
     dataRepresentationLen: UnsafeMutablePointer<Int>,
-    publicKey: UnsafeMutableRawPointer,
-    accessControlMode: Int32
+    publicKey: UnsafeMutableRawPointer
 ) -> Int32 {
     if #available(macOS 26, iOS 26, *) {
         do {
-            let key: SecureEnclave.MLDSA65.PrivateKey
-            if accessControlMode == 0 {
-                key = try SecureEnclave.MLDSA65.PrivateKey()
-            } else {
-                guard let ac = makeAccessControl(accessControlMode) else { return -2 }
-                key = try SecureEnclave.MLDSA65.PrivateKey(accessControl: ac)
-            }
+            let key = try SecureEnclave.MLDSA65.PrivateKey()
             let keyData = key.dataRepresentation
             let pubData = key.publicKey.rawRepresentation
 
@@ -315,18 +282,11 @@ public func swiftSEMLDsa65Sign(
 public func swiftSEMLDsa87GenerateKeypair(
     dataRepresentation: UnsafeMutableRawPointer,
     dataRepresentationLen: UnsafeMutablePointer<Int>,
-    publicKey: UnsafeMutableRawPointer,
-    accessControlMode: Int32
+    publicKey: UnsafeMutableRawPointer
 ) -> Int32 {
     if #available(macOS 26, iOS 26, *) {
         do {
-            let key: SecureEnclave.MLDSA87.PrivateKey
-            if accessControlMode == 0 {
-                key = try SecureEnclave.MLDSA87.PrivateKey()
-            } else {
-                guard let ac = makeAccessControl(accessControlMode) else { return -2 }
-                key = try SecureEnclave.MLDSA87.PrivateKey(accessControl: ac)
-            }
+            let key = try SecureEnclave.MLDSA87.PrivateKey()
             let keyData = key.dataRepresentation
             let pubData = key.publicKey.rawRepresentation
 

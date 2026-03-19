@@ -36,7 +36,6 @@ extern "C" {
         data_representation: *mut u8,
         data_representation_len: *mut usize,
         public_key: *mut u8,
-        access_control_mode: i32,
     ) -> i32;
     fn swift_se_p256_get_public_key(
         data_representation: *const u8,
@@ -263,9 +262,7 @@ pub struct SEP256PrivateKey {
 
 impl SEP256PrivateKey {
     /// Generate a new P-256 key in the Secure Enclave
-    ///
-    /// `access_control_mode`: 0 = none, 1 = biometry only, 2 = biometry + passcode
-    pub fn generate(access_control_mode: i32) -> Result<Self> {
+    pub fn generate() -> Result<Self> {
         unsafe {
             let mut data_rep = vec![0u8; SE_P256_DATA_REPRESENTATION_MAX_SIZE];
             let mut data_rep_len: usize = 0;
@@ -275,19 +272,8 @@ impl SEP256PrivateKey {
                 data_rep.as_mut_ptr(),
                 &mut data_rep_len,
                 public_key_bytes.as_mut_ptr(),
-                access_control_mode,
             );
 
-            if result == -2 {
-                return Err(CryptoKitError::InvalidInput(
-                    "SecAccessControlCreateWithFlags returned nil".to_string(),
-                ));
-            }
-            if result == -3 {
-                let err_msg =
-                    String::from_utf8_lossy(&data_rep[..data_rep_len]).to_string();
-                return Err(CryptoKitError::InvalidInput(err_msg));
-            }
             if result != 0 {
                 return Err(CryptoKitError::KeyGenerationFailed);
             }
