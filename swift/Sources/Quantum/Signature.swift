@@ -206,9 +206,14 @@ private func makeAccessControl(_ mode: Int32) -> SecAccessControl? {
     switch mode {
     case 1: flags = [.privateKeyUsage, .userPresence]
     case 2: flags = [.privateKeyUsage, .biometryCurrentSet]
-    default: flags = .privateKeyUsage
+    default: return nil
     }
-    return SecAccessControlCreateWithFlags(nil, kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly, flags, nil)
+    var error: Unmanaged<CFError>?
+    let result = SecAccessControlCreateWithFlags(nil, kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly, flags, &error)
+    if let error = error {
+        NSLog("SecAccessControlCreateWithFlags failed: \(error.takeRetainedValue())")
+    }
+    return result
 }
 
 @_cdecl("swift_se_mldsa65_generate_keypair")
@@ -220,8 +225,13 @@ public func swiftSEMLDsa65GenerateKeypair(
 ) -> Int32 {
     if #available(macOS 26, iOS 26, *) {
         do {
-            guard let accessControl = makeAccessControl(accessControlMode) else { return -1 }
-            let key = try SecureEnclave.MLDSA65.PrivateKey(accessControl: accessControl)
+            let key: SecureEnclave.MLDSA65.PrivateKey
+            if accessControlMode == 0 {
+                key = try SecureEnclave.MLDSA65.PrivateKey()
+            } else {
+                guard let ac = makeAccessControl(accessControlMode) else { return -2 }
+                key = try SecureEnclave.MLDSA65.PrivateKey(accessControl: ac)
+            }
             let keyData = key.dataRepresentation
             let pubData = key.publicKey.rawRepresentation
 
@@ -303,8 +313,13 @@ public func swiftSEMLDsa87GenerateKeypair(
 ) -> Int32 {
     if #available(macOS 26, iOS 26, *) {
         do {
-            guard let accessControl = makeAccessControl(accessControlMode) else { return -1 }
-            let key = try SecureEnclave.MLDSA87.PrivateKey(accessControl: accessControl)
+            let key: SecureEnclave.MLDSA87.PrivateKey
+            if accessControlMode == 0 {
+                key = try SecureEnclave.MLDSA87.PrivateKey()
+            } else {
+                guard let ac = makeAccessControl(accessControlMode) else { return -2 }
+                key = try SecureEnclave.MLDSA87.PrivateKey(accessControl: ac)
+            }
             let keyData = key.dataRepresentation
             let pubData = key.publicKey.rawRepresentation
 

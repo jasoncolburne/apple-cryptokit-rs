@@ -145,9 +145,14 @@ private func makeAccessControl(_ mode: Int32) -> SecAccessControl? {
     switch mode {
     case 1: flags = [.privateKeyUsage, .userPresence]
     case 2: flags = [.privateKeyUsage, .biometryCurrentSet]
-    default: flags = .privateKeyUsage
+    default: return nil
     }
-    return SecAccessControlCreateWithFlags(nil, kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly, flags, nil)
+    var error: Unmanaged<CFError>?
+    let result = SecAccessControlCreateWithFlags(nil, kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly, flags, &error)
+    if let error = error {
+        NSLog("SecAccessControlCreateWithFlags failed: \(error.takeRetainedValue())")
+    }
+    return result
 }
 
 @_cdecl("swift_se_p256_generate_keypair")
@@ -158,8 +163,13 @@ public func swiftSEP256GenerateKeypair(
     accessControlMode: Int32
 ) -> Int32 {
     do {
-        guard let accessControl = makeAccessControl(accessControlMode) else { return -1 }
-        let key = try SecureEnclave.P256.Signing.PrivateKey(accessControl: accessControl)
+        let key: SecureEnclave.P256.Signing.PrivateKey
+        if accessControlMode == 0 {
+            key = try SecureEnclave.P256.Signing.PrivateKey()
+        } else {
+            guard let ac = makeAccessControl(accessControlMode) else { return -2 }
+            key = try SecureEnclave.P256.Signing.PrivateKey(accessControl: ac)
+        }
         let keyData = key.dataRepresentation
         let pubData = key.publicKey.rawRepresentation
 
