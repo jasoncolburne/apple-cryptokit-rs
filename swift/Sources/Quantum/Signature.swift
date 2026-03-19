@@ -197,15 +197,31 @@ public func swiftMLDsa87DerivePublicKey(
 
 // MARK: - Secure Enclave ML-DSA65
 
+/// Access control modes for Secure Enclave keys:
+///   0 = no biometry (privateKeyUsage only)
+///   1 = biometry required (biometryCurrentSet + privateKeyUsage)
+///   2 = biometry with passcode fallback (userPresence + privateKeyUsage)
+private func makeAccessControl(_ mode: Int32) -> SecAccessControl? {
+    let flags: SecAccessControlCreateFlags
+    switch mode {
+    case 1: flags = [.privateKeyUsage, .biometryCurrentSet]
+    case 2: flags = [.privateKeyUsage, .userPresence]
+    default: flags = .privateKeyUsage
+    }
+    return SecAccessControlCreateWithFlags(nil, kSecAttrAccessibleWhenUnlockedThisDeviceOnly, flags, nil)
+}
+
 @_cdecl("swift_se_mldsa65_generate_keypair")
 public func swiftSEMLDsa65GenerateKeypair(
     dataRepresentation: UnsafeMutableRawPointer,
     dataRepresentationLen: UnsafeMutablePointer<Int>,
-    publicKey: UnsafeMutableRawPointer
+    publicKey: UnsafeMutableRawPointer,
+    accessControlMode: Int32
 ) -> Int32 {
     if #available(macOS 26, iOS 26, *) {
         do {
-            let key = try SecureEnclave.MLDSA65.PrivateKey()
+            guard let accessControl = makeAccessControl(accessControlMode) else { return -1 }
+            let key = try SecureEnclave.MLDSA65.PrivateKey(accessControl: accessControl)
             let keyData = key.dataRepresentation
             let pubData = key.publicKey.rawRepresentation
 
@@ -282,11 +298,13 @@ public func swiftSEMLDsa65Sign(
 public func swiftSEMLDsa87GenerateKeypair(
     dataRepresentation: UnsafeMutableRawPointer,
     dataRepresentationLen: UnsafeMutablePointer<Int>,
-    publicKey: UnsafeMutableRawPointer
+    publicKey: UnsafeMutableRawPointer,
+    accessControlMode: Int32
 ) -> Int32 {
     if #available(macOS 26, iOS 26, *) {
         do {
-            let key = try SecureEnclave.MLDSA87.PrivateKey()
+            guard let accessControl = makeAccessControl(accessControlMode) else { return -1 }
+            let key = try SecureEnclave.MLDSA87.PrivateKey(accessControl: accessControl)
             let keyData = key.dataRepresentation
             let pubData = key.publicKey.rawRepresentation
 

@@ -380,7 +380,9 @@ pub struct SEMLDsa65PrivateKey {
 
 impl SEMLDsa65PrivateKey {
     /// Generate a new key in the Secure Enclave
-    pub fn generate() -> Result<Self> {
+    ///
+    /// `access_control_mode`: 0 = none, 1 = biometry only, 2 = biometry + passcode
+    pub fn generate(access_control_mode: i32) -> Result<Self> {
         unsafe {
             let mut data_rep = vec![0u8; SE_DATA_REPRESENTATION_MAX_SIZE];
             let mut data_rep_len: usize = 0;
@@ -390,6 +392,7 @@ impl SEMLDsa65PrivateKey {
                 data_rep.as_mut_ptr(),
                 &mut data_rep_len,
                 public_key_bytes.as_mut_ptr(),
+                access_control_mode,
             );
 
             if result != 0 {
@@ -467,7 +470,9 @@ pub struct SEMLDsa87PrivateKey {
 
 impl SEMLDsa87PrivateKey {
     /// Generate a new key in the Secure Enclave
-    pub fn generate() -> Result<Self> {
+    ///
+    /// `access_control_mode`: 0 = none, 1 = biometry only, 2 = biometry + passcode
+    pub fn generate(access_control_mode: i32) -> Result<Self> {
         unsafe {
             let mut data_rep = vec![0u8; SE_DATA_REPRESENTATION_MAX_SIZE];
             let mut data_rep_len: usize = 0;
@@ -477,6 +482,7 @@ impl SEMLDsa87PrivateKey {
                 data_rep.as_mut_ptr(),
                 &mut data_rep_len,
                 public_key_bytes.as_mut_ptr(),
+                access_control_mode,
             );
 
             if result != 0 {
@@ -599,6 +605,7 @@ extern "C" {
         data_representation: *mut u8,
         data_representation_len: *mut usize,
         public_key: *mut u8,
+        access_control_mode: i32,
     ) -> i32;
     fn swift_se_mldsa65_get_public_key(
         data_representation: *const u8,
@@ -619,6 +626,7 @@ extern "C" {
         data_representation: *mut u8,
         data_representation_len: *mut usize,
         public_key: *mut u8,
+        access_control_mode: i32,
     ) -> i32;
     fn swift_se_mldsa87_get_public_key(
         data_representation: *const u8,

@@ -136,14 +136,30 @@ func swift_p256_key_agreement(
 
 // MARK: - Secure Enclave P-256
 
+/// Access control modes for Secure Enclave keys:
+///   0 = no biometry (privateKeyUsage only)
+///   1 = biometry required (biometryCurrentSet + privateKeyUsage)
+///   2 = biometry with passcode fallback (userPresence + privateKeyUsage)
+private func makeAccessControl(_ mode: Int32) -> SecAccessControl? {
+    let flags: SecAccessControlCreateFlags
+    switch mode {
+    case 1: flags = [.privateKeyUsage, .biometryCurrentSet]
+    case 2: flags = [.privateKeyUsage, .userPresence]
+    default: flags = .privateKeyUsage
+    }
+    return SecAccessControlCreateWithFlags(nil, kSecAttrAccessibleWhenUnlockedThisDeviceOnly, flags, nil)
+}
+
 @_cdecl("swift_se_p256_generate_keypair")
 public func swiftSEP256GenerateKeypair(
     dataRepresentation: UnsafeMutableRawPointer,
     dataRepresentationLen: UnsafeMutablePointer<Int>,
-    publicKey: UnsafeMutableRawPointer
+    publicKey: UnsafeMutableRawPointer,
+    accessControlMode: Int32
 ) -> Int32 {
     do {
-        let key = try SecureEnclave.P256.Signing.PrivateKey()
+        guard let accessControl = makeAccessControl(accessControlMode) else { return -1 }
+        let key = try SecureEnclave.P256.Signing.PrivateKey(accessControl: accessControl)
         let keyData = key.dataRepresentation
         let pubData = key.publicKey.rawRepresentation
 
