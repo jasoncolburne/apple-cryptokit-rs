@@ -55,6 +55,20 @@ extern "C" {
         data_representation: *const u8,
         data_representation_len: usize,
     ) -> i32;
+    fn swift_se_delete_all_keys() -> i32;
+}
+
+/// Delete all Secure Enclave keys belonging to this app from the Keychain.
+pub fn se_delete_all_keys() -> Result<()> {
+    unsafe {
+        let result = swift_se_delete_all_keys();
+        if result != 0 {
+            return Err(CryptoKitError::InvalidInput(
+                "Failed to delete all SE keys".to_string(),
+            ));
+        }
+        Ok(())
+    }
 }
 
 /// P-256 private key (32 bytes)

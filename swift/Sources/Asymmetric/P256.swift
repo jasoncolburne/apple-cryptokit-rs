@@ -263,4 +263,14 @@ public func swiftSEP256DeleteKey(
     }
 }
 
-
+/// Delete all Secure Enclave keys belonging to this app from the Keychain.
+/// Only appropriate during a full state reset.
+@_cdecl("swift_se_delete_all_keys")
+public func swiftSEDeleteAllKeys() -> Int32 {
+    let query: [String: Any] = [
+        kSecClass as String: kSecClassKey,
+        kSecAttrTokenID as String: kSecAttrTokenIDSecureEnclave
+    ]
+    let status = SecItemDelete(query as CFDictionary)
+    return (status == errSecSuccess || status == errSecItemNotFound) ? 0 : -1
+}
