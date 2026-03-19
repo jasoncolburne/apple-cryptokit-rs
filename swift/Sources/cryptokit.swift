@@ -60,6 +60,12 @@ func get_library_version() -> UnsafePointer<CChar>? {
    }
 }
 
+// Check if Secure Enclave is available on this device
+@_cdecl("swift_se_is_available")
+func swift_se_is_available() -> Int32 {
+    return SecureEnclave.isAvailable ? 1 : 0
+}
+
 // 检查算法支持情况
 @_cdecl("is_algorithm_supported")
 func is_algorithm_supported(_ algorithm: UnsafePointer<CChar>) -> Int32 {

@@ -84,6 +84,16 @@ pub mod keys;
 pub mod quantum;
 pub mod symmetric;
 
+// Secure Enclave availability check
+extern "C" {
+    fn swift_se_is_available() -> i32;
+}
+
+/// Check if the Secure Enclave is available on this device.
+pub fn se_is_available() -> bool {
+    unsafe { swift_se_is_available() == 1 }
+}
+
 // Re-export commonly used types and functions for convenience
 pub use error::{CryptoKitError, Result};
 
