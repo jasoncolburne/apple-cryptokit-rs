@@ -418,7 +418,7 @@ mod quantum_tests {
         let se_key = apple_cryptokit::quantum::SEMLDsa65PrivateKey::generate()
             .expect("Failed to generate SE ML-DSA65 key");
 
-        let public_key = se_key.public_key();
+        let public_key = se_key.public_key().unwrap();
         assert_eq!(public_key.to_bytes().len(), 1952);
 
         let message = b"secure enclave test";
@@ -436,7 +436,7 @@ mod quantum_tests {
         let se_key = apple_cryptokit::quantum::SEMLDsa87PrivateKey::generate()
             .expect("Failed to generate SE ML-DSA87 key");
 
-        let public_key = se_key.public_key();
+        let public_key = se_key.public_key().unwrap();
         assert_eq!(public_key.to_bytes().len(), 2592);
 
         let message = b"secure enclave test";
@@ -455,12 +455,10 @@ mod quantum_tests {
             .expect("Failed to generate SE ML-DSA65 key");
 
         let data_rep = se_key.data_representation();
-        let public_key = se_key.public_key();
+        let public_key = se_key.public_key().unwrap();
 
-        let restored = apple_cryptokit::quantum::SEMLDsa65PrivateKey::from_data_representation(
-            data_rep,
-            public_key,
-        );
+        let restored =
+            apple_cryptokit::quantum::SEMLDsa65PrivateKey::from_data_representation(data_rep);
 
         let message = b"persistence roundtrip";
         let sig = restored.sign(message).expect("Failed to sign with restored SE key");
@@ -476,12 +474,10 @@ mod quantum_tests {
             .expect("Failed to generate SE ML-DSA87 key");
 
         let data_rep = se_key.data_representation();
-        let public_key = se_key.public_key();
+        let public_key = se_key.public_key().unwrap();
 
-        let restored = apple_cryptokit::quantum::SEMLDsa87PrivateKey::from_data_representation(
-            data_rep,
-            public_key,
-        );
+        let restored =
+            apple_cryptokit::quantum::SEMLDsa87PrivateKey::from_data_representation(data_rep);
 
         let message = b"persistence roundtrip";
         let sig = restored.sign(message).expect("Failed to sign with restored SE key");

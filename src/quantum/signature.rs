@@ -376,7 +376,6 @@ const SE_DATA_REPRESENTATION_MAX_SIZE: usize = 16384;
 /// Secure Enclave ML-DSA65 private key handle (opaque data representation)
 pub struct SEMLDsa65PrivateKey {
     data_representation: Vec<u8>,
-    public_key: MLDsa65PublicKey,
 }
 
 impl SEMLDsa65PrivateKey {
@@ -401,15 +400,28 @@ impl SEMLDsa65PrivateKey {
 
             Ok(SEMLDsa65PrivateKey {
                 data_representation: data_rep,
-                public_key: MLDsa65PublicKey {
-                    bytes: public_key_bytes,
-                },
             })
         }
     }
 
-    pub fn public_key(&self) -> &MLDsa65PublicKey {
-        &self.public_key
+    pub fn public_key(&self) -> Result<MLDsa65PublicKey> {
+        unsafe {
+            let mut public_key_bytes = vec![0u8; MLDSA65_PUBLIC_KEY_SIZE];
+
+            let result = swift_se_mldsa65_get_public_key(
+                self.data_representation.as_ptr(),
+                self.data_representation.len(),
+                public_key_bytes.as_mut_ptr(),
+            );
+
+            if result != 0 {
+                return Err(CryptoKitError::KeyGenerationFailed);
+            }
+
+            Ok(MLDsa65PublicKey {
+                bytes: public_key_bytes,
+            })
+        }
     }
 
     pub fn sign(&self, message: &[u8]) -> Result<Vec<u8>> {
@@ -441,10 +453,9 @@ impl SEMLDsa65PrivateKey {
     }
 
     /// Restore from persisted data representation
-    pub fn from_data_representation(data: &[u8], public_key: &MLDsa65PublicKey) -> Self {
+    pub fn from_data_representation(data: &[u8]) -> Self {
         SEMLDsa65PrivateKey {
             data_representation: data.to_vec(),
-            public_key: public_key.clone(),
         }
     }
 }
@@ -452,7 +463,6 @@ impl SEMLDsa65PrivateKey {
 /// Secure Enclave ML-DSA87 private key handle (opaque data representation)
 pub struct SEMLDsa87PrivateKey {
     data_representation: Vec<u8>,
-    public_key: MLDsa87PublicKey,
 }
 
 impl SEMLDsa87PrivateKey {
@@ -477,15 +487,28 @@ impl SEMLDsa87PrivateKey {
 
             Ok(SEMLDsa87PrivateKey {
                 data_representation: data_rep,
-                public_key: MLDsa87PublicKey {
-                    bytes: public_key_bytes,
-                },
             })
         }
     }
 
-    pub fn public_key(&self) -> &MLDsa87PublicKey {
-        &self.public_key
+    pub fn public_key(&self) -> Result<MLDsa87PublicKey> {
+        unsafe {
+            let mut public_key_bytes = vec![0u8; MLDSA87_PUBLIC_KEY_SIZE];
+
+            let result = swift_se_mldsa87_get_public_key(
+                self.data_representation.as_ptr(),
+                self.data_representation.len(),
+                public_key_bytes.as_mut_ptr(),
+            );
+
+            if result != 0 {
+                return Err(CryptoKitError::KeyGenerationFailed);
+            }
+
+            Ok(MLDsa87PublicKey {
+                bytes: public_key_bytes,
+            })
+        }
     }
 
     pub fn sign(&self, message: &[u8]) -> Result<Vec<u8>> {
@@ -517,10 +540,9 @@ impl SEMLDsa87PrivateKey {
     }
 
     /// Restore from persisted data representation
-    pub fn from_data_representation(data: &[u8], public_key: &MLDsa87PublicKey) -> Self {
+    pub fn from_data_representation(data: &[u8]) -> Self {
         SEMLDsa87PrivateKey {
             data_representation: data.to_vec(),
-            public_key: public_key.clone(),
         }
     }
 }
@@ -578,6 +600,11 @@ extern "C" {
         data_representation_len: *mut usize,
         public_key: *mut u8,
     ) -> i32;
+    fn swift_se_mldsa65_get_public_key(
+        data_representation: *const u8,
+        data_representation_len: usize,
+        public_key: *mut u8,
+    ) -> i32;
     fn swift_se_mldsa65_sign(
         data_representation: *const u8,
         data_representation_len: usize,
@@ -591,6 +618,11 @@ extern "C" {
     fn swift_se_mldsa87_generate_keypair(
         data_representation: *mut u8,
         data_representation_len: *mut usize,
+        public_key: *mut u8,
+    ) -> i32;
+    fn swift_se_mldsa87_get_public_key(
+        data_representation: *const u8,
+        data_representation_len: usize,
         public_key: *mut u8,
     ) -> i32;
     fn swift_se_mldsa87_sign(

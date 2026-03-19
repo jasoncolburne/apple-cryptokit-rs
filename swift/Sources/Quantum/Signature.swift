@@ -225,6 +225,29 @@ public func swiftSEMLDsa65GenerateKeypair(
     return -1
 }
 
+@_cdecl("swift_se_mldsa65_get_public_key")
+public func swiftSEMLDsa65GetPublicKey(
+    dataRepresentation: UnsafeRawPointer,
+    dataRepresentationLen: Int,
+    publicKey: UnsafeMutableRawPointer
+) -> Int32 {
+    if #available(macOS 26, iOS 26, *) {
+        do {
+            let keyData = Data(bytes: dataRepresentation, count: dataRepresentationLen)
+            let key = try SecureEnclave.MLDSA65.PrivateKey(dataRepresentation: keyData)
+            let pubData = key.publicKey.rawRepresentation
+
+            pubData.withUnsafeBytes { bytes in
+                publicKey.copyMemory(from: bytes.baseAddress!, byteCount: bytes.count)
+            }
+            return 0
+        } catch {
+            return -1
+        }
+    }
+    return -1
+}
+
 @_cdecl("swift_se_mldsa65_sign")
 public func swiftSEMLDsa65Sign(
     dataRepresentation: UnsafeRawPointer,
@@ -271,6 +294,29 @@ public func swiftSEMLDsa87GenerateKeypair(
                 dataRepresentation.copyMemory(from: bytes.baseAddress!, byteCount: bytes.count)
             }
             dataRepresentationLen.pointee = keyData.count
+
+            pubData.withUnsafeBytes { bytes in
+                publicKey.copyMemory(from: bytes.baseAddress!, byteCount: bytes.count)
+            }
+            return 0
+        } catch {
+            return -1
+        }
+    }
+    return -1
+}
+
+@_cdecl("swift_se_mldsa87_get_public_key")
+public func swiftSEMLDsa87GetPublicKey(
+    dataRepresentation: UnsafeRawPointer,
+    dataRepresentationLen: Int,
+    publicKey: UnsafeMutableRawPointer
+) -> Int32 {
+    if #available(macOS 26, iOS 26, *) {
+        do {
+            let keyData = Data(bytes: dataRepresentation, count: dataRepresentationLen)
+            let key = try SecureEnclave.MLDSA87.PrivateKey(dataRepresentation: keyData)
+            let pubData = key.publicKey.rawRepresentation
 
             pubData.withUnsafeBytes { bytes in
                 publicKey.copyMemory(from: bytes.baseAddress!, byteCount: bytes.count)
