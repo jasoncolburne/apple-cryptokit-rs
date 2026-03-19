@@ -169,17 +169,12 @@ public func swiftSEP256GenerateKeypair(
             key = try SecureEnclave.P256.Signing.PrivateKey()
         } else {
             guard let ac = makeAccessControl(accessControlMode) else { return -2 }
-            do {
-                key = try SecureEnclave.P256.Signing.PrivateKey(accessControl: ac)
-            } catch {
-                // Return error code with description embedded in the data buffer
-                let errMsg = "AC_KEYGEN:\(error.localizedDescription)"
-                errMsg.utf8.enumerated().forEach { (i, b) in
-                    if i < 256 { dataRepresentation.storeBytes(of: b, toByteOffset: i, as: UInt8.self) }
-                }
-                dataRepresentationLen.pointee = min(errMsg.utf8.count, 256)
-                return -3
-            }
+            let context = LAContext()
+            key = try SecureEnclave.P256.Signing.PrivateKey(
+                compactRepresentable: false,
+                accessControl: ac,
+                authenticationContext: context
+            )
         }
         let keyData = key.dataRepresentation
         let pubData = key.publicKey.rawRepresentation
