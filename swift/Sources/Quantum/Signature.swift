@@ -208,7 +208,7 @@ private func makeAccessControl(_ mode: Int32) -> SecAccessControl? {
     case 2: flags = [.privateKeyUsage, .biometryCurrentSet]
     default: flags = .privateKeyUsage
     }
-    return SecAccessControlCreateWithFlags(nil, kSecAttrAccessibleWhenUnlockedThisDeviceOnly, flags, nil)
+    return SecAccessControlCreateWithFlags(nil, kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly, flags, nil)
 }
 
 @_cdecl("swift_se_mldsa65_generate_keypair")
