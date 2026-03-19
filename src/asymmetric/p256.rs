@@ -260,6 +260,16 @@ impl SEP256PrivateKey {
                 access_control_mode,
             );
 
+            if result == -2 {
+                return Err(CryptoKitError::InvalidInput(
+                    "SecAccessControlCreateWithFlags returned nil".to_string(),
+                ));
+            }
+            if result == -3 {
+                let err_msg =
+                    String::from_utf8_lossy(&data_rep[..data_rep_len]).to_string();
+                return Err(CryptoKitError::InvalidInput(err_msg));
+            }
             if result != 0 {
                 return Err(CryptoKitError::KeyGenerationFailed);
             }
