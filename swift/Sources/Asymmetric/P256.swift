@@ -241,3 +241,29 @@ public func swiftSEP256Sign(
         return -1
     }
 }
+
+/// Delete an SE P-256 key from the Keychain by its data representation.
+/// Reconstructs the key to find its public key hash, then deletes the Keychain entry.
+@_cdecl("swift_se_p256_delete_key")
+public func swiftSEP256DeleteKey(
+    dataRepresentation: UnsafeRawPointer,
+    dataRepresentationLen: Int
+) -> Int32 {
+    do {
+        let keyData = Data(bytes: dataRepresentation, count: dataRepresentationLen)
+        let key = try SecureEnclave.P256.Signing.PrivateKey(dataRepresentation: keyData)
+        let pubKeyHash = Data(Insecure.SHA1.hash(data: key.publicKey.rawRepresentation))
+
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassKey,
+            kSecAttrApplicationLabel as String: pubKeyHash,
+            kSecAttrTokenID as String: kSecAttrTokenIDSecureEnclave
+        ]
+        let status = SecItemDelete(query as CFDictionary)
+        return (status == errSecSuccess || status == errSecItemNotFound) ? 0 : -1
+    } catch {
+        return -1
+    }
+}
+
+

@@ -51,6 +51,10 @@ extern "C" {
         signature: *mut u8,
         signature_len: *mut usize,
     ) -> i32;
+    fn swift_se_p256_delete_key(
+        data_representation: *const u8,
+        data_representation_len: usize,
+    ) -> i32;
 }
 
 /// P-256 private key (32 bytes)
@@ -335,6 +339,24 @@ impl SEP256PrivateKey {
     pub fn from_data_representation(data: &[u8]) -> Self {
         SEP256PrivateKey {
             data_representation: data.to_vec(),
+        }
+    }
+
+    /// Delete this key from the Secure Enclave / Keychain
+    pub fn delete(&self) -> Result<()> {
+        unsafe {
+            let result = swift_se_p256_delete_key(
+                self.data_representation.as_ptr(),
+                self.data_representation.len(),
+            );
+
+            if result != 0 {
+                return Err(CryptoKitError::InvalidInput(
+                    "Failed to delete SE P256 key".to_string(),
+                ));
+            }
+
+            Ok(())
         }
     }
 }
