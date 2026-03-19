@@ -211,7 +211,12 @@ private func makeAccessControl(_ mode: Int32) -> SecAccessControl? {
     default: return nil
     }
     var error: Unmanaged<CFError>?
-    let result = SecAccessControlCreateWithFlags(nil, kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly, flags, &error)
+    #if targetEnvironment(simulator)
+    let accessibility = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+    #else
+    let accessibility = kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly
+    #endif
+    let result = SecAccessControlCreateWithFlags(nil, accessibility, flags, &error)
     if let error = error {
         NSLog("SecAccessControlCreateWithFlags failed: \(error.takeRetainedValue())")
     }
