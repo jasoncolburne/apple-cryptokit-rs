@@ -266,11 +266,18 @@ public func swiftSEP256DeleteKey(
         let key = try SecureEnclave.P256.Signing.PrivateKey(dataRepresentation: keyData)
         let pubKeyHash = Data(Insecure.SHA1.hash(data: key.publicKey.rawRepresentation))
 
+        #if targetEnvironment(simulator)
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassKey,
+            kSecAttrApplicationLabel as String: pubKeyHash,
+        ]
+        #else
         let query: [String: Any] = [
             kSecClass as String: kSecClassKey,
             kSecAttrApplicationLabel as String: pubKeyHash,
             kSecAttrTokenID as String: kSecAttrTokenIDSecureEnclave
         ]
+        #endif
         let status = SecItemDelete(query as CFDictionary)
         return (status == errSecSuccess || status == errSecItemNotFound) ? 0 : -1
     } catch {
@@ -282,10 +289,16 @@ public func swiftSEP256DeleteKey(
 /// Only appropriate during a full state reset.
 @_cdecl("swift_se_delete_all_keys")
 public func swiftSEDeleteAllKeys() -> Int32 {
+    #if targetEnvironment(simulator)
+    let query: [String: Any] = [
+        kSecClass as String: kSecClassKey,
+    ]
+    #else
     let query: [String: Any] = [
         kSecClass as String: kSecClassKey,
         kSecAttrTokenID as String: kSecAttrTokenIDSecureEnclave
     ]
+    #endif
     let status = SecItemDelete(query as CFDictionary)
     return (status == errSecSuccess || status == errSecItemNotFound) ? 0 : -1
 }
