@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import LocalAuthentication
 
 // MARK: - P-256 椭圆曲线密码学模块
 
@@ -175,7 +176,12 @@ public func swiftSEP256GenerateKeypair(
             key = try SecureEnclave.P256.Signing.PrivateKey()
         } else {
             guard let ac = makeAccessControl(accessControlMode) else { return -2 }
-            key = try SecureEnclave.P256.Signing.PrivateKey(accessControl: ac)
+            let context = LAContext()
+            key = try SecureEnclave.P256.Signing.PrivateKey(
+                compactRepresentable: false,
+                accessControl: ac,
+                authenticationContext: context
+            )
         }
         let keyData = key.dataRepresentation
         let pubData = key.publicKey.rawRepresentation
@@ -230,7 +236,11 @@ public func swiftSEP256Sign(
 ) -> Int32 {
     do {
         let keyData = Data(bytes: dataRepresentation, count: dataRepresentationLen)
-        let key = try SecureEnclave.P256.Signing.PrivateKey(dataRepresentation: keyData)
+        let context = LAContext()
+        let key = try SecureEnclave.P256.Signing.PrivateKey(
+            dataRepresentation: keyData,
+            authenticationContext: context
+        )
         let msgData = Data(bytes: message, count: messageLen)
         let sigData = try key.signature(for: msgData).rawRepresentation
 
