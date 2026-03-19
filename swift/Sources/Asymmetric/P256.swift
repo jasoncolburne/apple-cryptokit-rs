@@ -136,15 +136,15 @@ func swift_p256_key_agreement(
 
 // MARK: - Secure Enclave P-256
 
-/// Access control modes for Secure Enclave keys:
-///   0 = no biometry (privateKeyUsage only)
-///   1 = biometry required (biometryCurrentSet + privateKeyUsage)
-///   2 = biometry with passcode fallback (userPresence + privateKeyUsage)
+/// Access control modes for Secure Enclave keys (ascending security):
+///   0 = none (privateKeyUsage only)
+///   1 = passcode or biometry (userPresence + privateKeyUsage)
+///   2 = biometry only (biometryCurrentSet + privateKeyUsage)
 private func makeAccessControl(_ mode: Int32) -> SecAccessControl? {
     let flags: SecAccessControlCreateFlags
     switch mode {
-    case 1: flags = [.privateKeyUsage, .biometryCurrentSet]
-    case 2: flags = [.privateKeyUsage, .userPresence]
+    case 1: flags = [.privateKeyUsage, .userPresence]
+    case 2: flags = [.privateKeyUsage, .biometryCurrentSet]
     default: flags = .privateKeyUsage
     }
     return SecAccessControlCreateWithFlags(nil, kSecAttrAccessibleWhenUnlockedThisDeviceOnly, flags, nil)
