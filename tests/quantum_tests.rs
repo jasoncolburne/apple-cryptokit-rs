@@ -415,7 +415,7 @@ mod quantum_tests {
 
     #[test]
     fn test_se_mldsa65_generate_and_sign() {
-        let se_key = apple_cryptokit::quantum::SEMLDsa65PrivateKey::generate()
+        let se_key = apple_cryptokit::quantum::SEMLDsa65PrivateKey::generate(0)
             .expect("Failed to generate SE ML-DSA65 key");
 
         let public_key = se_key.public_key().unwrap();
@@ -433,7 +433,7 @@ mod quantum_tests {
 
     #[test]
     fn test_se_mldsa87_generate_and_sign() {
-        let se_key = apple_cryptokit::quantum::SEMLDsa87PrivateKey::generate()
+        let se_key = apple_cryptokit::quantum::SEMLDsa87PrivateKey::generate(0)
             .expect("Failed to generate SE ML-DSA87 key");
 
         let public_key = se_key.public_key().unwrap();
@@ -451,7 +451,7 @@ mod quantum_tests {
 
     #[test]
     fn test_se_mldsa65_persistence_roundtrip() {
-        let se_key = apple_cryptokit::quantum::SEMLDsa65PrivateKey::generate()
+        let se_key = apple_cryptokit::quantum::SEMLDsa65PrivateKey::generate(0)
             .expect("Failed to generate SE ML-DSA65 key");
 
         let data_rep = se_key.data_representation();
@@ -470,7 +470,7 @@ mod quantum_tests {
 
     #[test]
     fn test_se_mldsa87_persistence_roundtrip() {
-        let se_key = apple_cryptokit::quantum::SEMLDsa87PrivateKey::generate()
+        let se_key = apple_cryptokit::quantum::SEMLDsa87PrivateKey::generate(0)
             .expect("Failed to generate SE ML-DSA87 key");
 
         let data_rep = se_key.data_representation();
