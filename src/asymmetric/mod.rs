@@ -52,7 +52,7 @@ pub use curve25519::{
 };
 
 pub use p256::{
-    P256, P256PrivateKey, P256PublicKey, P256SharedSecret, P256Signature,
+    P256, P256PrivateKey, P256PublicKey, P256SharedSecret, P256Signature, SEP256PrivateKey,
     generate_keypair as p256_generate_keypair, key_agreement as p256_key_agreement,
     sign as p256_sign, verify as p256_verify,
 };

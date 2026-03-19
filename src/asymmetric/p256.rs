@@ -3,6 +3,13 @@
 use crate::asymmetric::{KeyAgreement, SignatureAlgorithm};
 use crate::error::{CryptoKitError, Result};
 
+/// P-256 public key size (uncompressed x + y, 64 bytes)
+const P256_PUBLIC_KEY_SIZE: usize = 64;
+/// P-256 signature size (r + s, 64 bytes)
+const P256_SIGNATURE_SIZE: usize = 64;
+/// Maximum size for Secure Enclave data representation
+const SE_P256_DATA_REPRESENTATION_MAX_SIZE: usize = 1024;
+
 // P-256 related Swift FFI declarations
 extern "C" {
     fn swift_p256_generate_keypair(private_key: *mut u8, public_key: *mut u8) -> i32;
@@ -22,6 +29,26 @@ extern "C" {
         private_key: *const u8,
         public_key: *const u8,
         shared_secret: *mut u8,
+    ) -> i32;
+
+    // Secure Enclave P-256
+    fn swift_se_p256_generate_keypair(
+        data_representation: *mut u8,
+        data_representation_len: *mut usize,
+        public_key: *mut u8,
+    ) -> i32;
+    fn swift_se_p256_get_public_key(
+        data_representation: *const u8,
+        data_representation_len: usize,
+        public_key: *mut u8,
+    ) -> i32;
+    fn swift_se_p256_sign(
+        data_representation: *const u8,
+        data_representation_len: usize,
+        message: *const u8,
+        message_len: usize,
+        signature: *mut u8,
+        signature_len: *mut usize,
     ) -> i32;
 }
 
@@ -206,4 +233,94 @@ pub fn key_agreement(
     public_key: &P256PublicKey,
 ) -> Result<P256SharedSecret> {
     P256::key_agreement(private_key, public_key)
+}
+
+// MARK: - Secure Enclave P-256
+
+/// Secure Enclave P-256 private key handle (opaque data representation)
+pub struct SEP256PrivateKey {
+    data_representation: Vec<u8>,
+}
+
+impl SEP256PrivateKey {
+    /// Generate a new P-256 key in the Secure Enclave
+    pub fn generate() -> Result<Self> {
+        unsafe {
+            let mut data_rep = vec![0u8; SE_P256_DATA_REPRESENTATION_MAX_SIZE];
+            let mut data_rep_len: usize = 0;
+            let mut public_key_bytes = vec![0u8; P256_PUBLIC_KEY_SIZE];
+
+            let result = swift_se_p256_generate_keypair(
+                data_rep.as_mut_ptr(),
+                &mut data_rep_len,
+                public_key_bytes.as_mut_ptr(),
+            );
+
+            if result != 0 {
+                return Err(CryptoKitError::KeyGenerationFailed);
+            }
+
+            data_rep.truncate(data_rep_len);
+
+            Ok(SEP256PrivateKey {
+                data_representation: data_rep,
+            })
+        }
+    }
+
+    pub fn public_key(&self) -> Result<P256PublicKey> {
+        unsafe {
+            let mut public_key_bytes = vec![0u8; P256_PUBLIC_KEY_SIZE];
+
+            let result = swift_se_p256_get_public_key(
+                self.data_representation.as_ptr(),
+                self.data_representation.len(),
+                public_key_bytes.as_mut_ptr(),
+            );
+
+            if result != 0 {
+                return Err(CryptoKitError::KeyGenerationFailed);
+            }
+
+            let mut pk = [0u8; P256_PUBLIC_KEY_SIZE];
+            pk.copy_from_slice(&public_key_bytes);
+            Ok(P256PublicKey::from_bytes(pk))
+        }
+    }
+
+    pub fn sign(&self, message: &[u8]) -> Result<P256Signature> {
+        unsafe {
+            let mut signature = vec![0u8; P256_SIGNATURE_SIZE];
+            let mut signature_len = P256_SIGNATURE_SIZE;
+
+            let result = swift_se_p256_sign(
+                self.data_representation.as_ptr(),
+                self.data_representation.len(),
+                message.as_ptr(),
+                message.len(),
+                signature.as_mut_ptr(),
+                &mut signature_len,
+            );
+
+            if result != 0 {
+                return Err(CryptoKitError::SigningFailed);
+            }
+
+            let mut sig = [0u8; P256_SIGNATURE_SIZE];
+            sig.copy_from_slice(&signature[..P256_SIGNATURE_SIZE]);
+            Ok(P256Signature::from_bytes(sig))
+        }
+    }
+
+    /// Opaque data representation for persistence
+    pub fn data_representation(&self) -> &[u8] {
+        &self.data_representation
+    }
+
+    /// Restore from persisted data representation
+    pub fn from_data_representation(data: &[u8]) -> Self {
+        SEP256PrivateKey {
+            data_representation: data.to_vec(),
+        }
+    }
 }

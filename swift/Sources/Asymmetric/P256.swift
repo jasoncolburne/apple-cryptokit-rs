@@ -133,3 +133,75 @@ func swift_p256_key_agreement(
         return -1  // Error
     }
 }
+
+// MARK: - Secure Enclave P-256
+
+@_cdecl("swift_se_p256_generate_keypair")
+public func swiftSEP256GenerateKeypair(
+    dataRepresentation: UnsafeMutableRawPointer,
+    dataRepresentationLen: UnsafeMutablePointer<Int>,
+    publicKey: UnsafeMutableRawPointer
+) -> Int32 {
+    do {
+        let key = try SecureEnclave.P256.Signing.PrivateKey()
+        let keyData = key.dataRepresentation
+        let pubData = key.publicKey.rawRepresentation
+
+        keyData.withUnsafeBytes { bytes in
+            dataRepresentation.copyMemory(from: bytes.baseAddress!, byteCount: bytes.count)
+        }
+        dataRepresentationLen.pointee = keyData.count
+
+        pubData.withUnsafeBytes { bytes in
+            publicKey.copyMemory(from: bytes.baseAddress!, byteCount: bytes.count)
+        }
+        return 0
+    } catch {
+        return -1
+    }
+}
+
+@_cdecl("swift_se_p256_get_public_key")
+public func swiftSEP256GetPublicKey(
+    dataRepresentation: UnsafeRawPointer,
+    dataRepresentationLen: Int,
+    publicKey: UnsafeMutableRawPointer
+) -> Int32 {
+    do {
+        let keyData = Data(bytes: dataRepresentation, count: dataRepresentationLen)
+        let key = try SecureEnclave.P256.Signing.PrivateKey(dataRepresentation: keyData)
+        let pubData = key.publicKey.rawRepresentation
+
+        pubData.withUnsafeBytes { bytes in
+            publicKey.copyMemory(from: bytes.baseAddress!, byteCount: bytes.count)
+        }
+        return 0
+    } catch {
+        return -1
+    }
+}
+
+@_cdecl("swift_se_p256_sign")
+public func swiftSEP256Sign(
+    dataRepresentation: UnsafeRawPointer,
+    dataRepresentationLen: Int,
+    message: UnsafeRawPointer,
+    messageLen: Int,
+    signature: UnsafeMutableRawPointer,
+    signatureLen: UnsafeMutablePointer<Int>
+) -> Int32 {
+    do {
+        let keyData = Data(bytes: dataRepresentation, count: dataRepresentationLen)
+        let key = try SecureEnclave.P256.Signing.PrivateKey(dataRepresentation: keyData)
+        let msgData = Data(bytes: message, count: messageLen)
+        let sigData = try key.signature(for: msgData).rawRepresentation
+
+        sigData.withUnsafeBytes { bytes in
+            signature.copyMemory(from: bytes.baseAddress!, byteCount: bytes.count)
+        }
+        signatureLen.pointee = sigData.count
+        return 0
+    } catch {
+        return -1
+    }
+}
