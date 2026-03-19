@@ -1,6 +1,5 @@
 import CryptoKit
 import Foundation
-import LocalAuthentication
 
 // MARK: - ML-DSA65
 
@@ -201,12 +200,14 @@ public func swiftMLDsa87DerivePublicKey(
 /// Access control modes for Secure Enclave keys (ascending security):
 ///   0 = none (privateKeyUsage only)
 ///   1 = passcode or biometry (userPresence + privateKeyUsage)
-///   2 = biometry only (biometryCurrentSet + privateKeyUsage)
+///   2 = biometry (biometryAny + privateKeyUsage)
+///   3 = unchanging biometry (biometryCurrentSet + privateKeyUsage) — invalidated if biometry enrollment changes
 private func makeAccessControl(_ mode: Int32) -> SecAccessControl? {
     let flags: SecAccessControlCreateFlags
     switch mode {
     case 1: flags = [.privateKeyUsage, .userPresence]
-    case 2: flags = [.privateKeyUsage, .biometryCurrentSet]
+    case 2: flags = [.privateKeyUsage, .biometryAny]
+    case 3: flags = [.privateKeyUsage, .biometryCurrentSet]
     default: return nil
     }
     var error: Unmanaged<CFError>?
@@ -287,11 +288,7 @@ public func swiftSEMLDsa65Sign(
     if #available(macOS 26, iOS 26, *) {
         do {
             let keyData = Data(bytes: dataRepresentation, count: dataRepresentationLen)
-            let context = LAContext()
-            let key = try SecureEnclave.MLDSA65.PrivateKey(
-                dataRepresentation: keyData,
-                authenticationContext: context
-            )
+            let key = try SecureEnclave.MLDSA65.PrivateKey(dataRepresentation: keyData)
             let msgData = Data(bytes: message, count: messageLen)
             let sigData = try key.signature(for: msgData)
 
@@ -379,11 +376,7 @@ public func swiftSEMLDsa87Sign(
     if #available(macOS 26, iOS 26, *) {
         do {
             let keyData = Data(bytes: dataRepresentation, count: dataRepresentationLen)
-            let context = LAContext()
-            let key = try SecureEnclave.MLDSA87.PrivateKey(
-                dataRepresentation: keyData,
-                authenticationContext: context
-            )
+            let key = try SecureEnclave.MLDSA87.PrivateKey(dataRepresentation: keyData)
             let msgData = Data(bytes: message, count: messageLen)
             let sigData = try key.signature(for: msgData)
 

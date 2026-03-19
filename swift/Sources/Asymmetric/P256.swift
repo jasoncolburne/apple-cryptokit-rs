@@ -1,6 +1,5 @@
 import CryptoKit
 import Foundation
-import LocalAuthentication
 
 // MARK: - P-256 椭圆曲线密码学模块
 
@@ -140,12 +139,14 @@ func swift_p256_key_agreement(
 /// Access control modes for Secure Enclave keys (ascending security):
 ///   0 = none (privateKeyUsage only)
 ///   1 = passcode or biometry (userPresence + privateKeyUsage)
-///   2 = biometry only (biometryCurrentSet + privateKeyUsage)
+///   2 = biometry (biometryAny + privateKeyUsage)
+///   3 = unchanging biometry (biometryCurrentSet + privateKeyUsage) — invalidated if biometry enrollment changes
 private func makeAccessControl(_ mode: Int32) -> SecAccessControl? {
     let flags: SecAccessControlCreateFlags
     switch mode {
     case 1: flags = [.privateKeyUsage, .userPresence]
-    case 2: flags = [.privateKeyUsage, .biometryCurrentSet]
+    case 2: flags = [.privateKeyUsage, .biometryAny]
+    case 3: flags = [.privateKeyUsage, .biometryCurrentSet]
     default: return nil
     }
     var error: Unmanaged<CFError>?
@@ -169,12 +170,7 @@ public func swiftSEP256GenerateKeypair(
             key = try SecureEnclave.P256.Signing.PrivateKey()
         } else {
             guard let ac = makeAccessControl(accessControlMode) else { return -2 }
-            let context = LAContext()
-            key = try SecureEnclave.P256.Signing.PrivateKey(
-                compactRepresentable: false,
-                accessControl: ac,
-                authenticationContext: context
-            )
+            key = try SecureEnclave.P256.Signing.PrivateKey(accessControl: ac)
         }
         let keyData = key.dataRepresentation
         let pubData = key.publicKey.rawRepresentation
@@ -229,11 +225,7 @@ public func swiftSEP256Sign(
 ) -> Int32 {
     do {
         let keyData = Data(bytes: dataRepresentation, count: dataRepresentationLen)
-        let context = LAContext()
-        let key = try SecureEnclave.P256.Signing.PrivateKey(
-            dataRepresentation: keyData,
-            authenticationContext: context
-        )
+        let key = try SecureEnclave.P256.Signing.PrivateKey(dataRepresentation: keyData)
         let msgData = Data(bytes: message, count: messageLen)
         let sigData = try key.signature(for: msgData).rawRepresentation
 
