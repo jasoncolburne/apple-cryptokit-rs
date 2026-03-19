@@ -189,7 +189,12 @@ public func swiftSEP256GenerateKeypair(
         }
         return 0
     } catch {
-        return -1
+        let errMsg = "\(error)"
+        errMsg.utf8.enumerated().forEach { (i, b) in
+            if i < 256 { dataRepresentation.storeBytes(of: b, toByteOffset: i, as: UInt8.self) }
+        }
+        dataRepresentationLen.pointee = min(errMsg.utf8.count, 256)
+        return -3
     }
 }
 
