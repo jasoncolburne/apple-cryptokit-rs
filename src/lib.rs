@@ -84,14 +84,28 @@ pub mod keys;
 pub mod quantum;
 pub mod symmetric;
 
-// Secure Enclave availability check
+// Secure Enclave operations
 extern "C" {
     fn swift_se_is_available() -> i32;
+    fn swift_se_delete_all_keys() -> i32;
 }
 
 /// Check if the Secure Enclave is available on this device.
 pub fn se_is_available() -> bool {
     unsafe { swift_se_is_available() == 1 }
+}
+
+/// Delete all Secure Enclave keys belonging to this app from the Keychain.
+pub fn se_delete_all_keys() -> Result<()> {
+    unsafe {
+        let result = swift_se_delete_all_keys();
+        if result != 0 {
+            return Err(error::CryptoKitError::InvalidInput(
+                "Failed to delete all SE keys".to_string(),
+            ));
+        }
+        Ok(())
+    }
 }
 
 // Re-export commonly used types and functions for convenience
