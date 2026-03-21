@@ -46,25 +46,25 @@ pub trait PublicKeyAlgorithm: SignatureAlgorithm + KeyAgreement {}
 
 // Re-export commonly used types
 pub use curve25519::{
-    Curve25519PrivateKey, Curve25519PublicKey, Ed25519, Ed25519Signature, SharedSecret, X25519,
     ed25519_generate_keypair, ed25519_sign, ed25519_verify, x25519_generate_keypair,
-    x25519_key_agreement,
+    x25519_key_agreement, Curve25519PrivateKey, Curve25519PublicKey, Ed25519, Ed25519Signature,
+    SharedSecret, X25519,
 };
 
 pub use p256::{
-    P256, P256PrivateKey, P256PublicKey, P256SharedSecret, P256Signature, SEP256PrivateKey,
     generate_keypair as p256_generate_keypair, key_agreement as p256_key_agreement,
-    sign as p256_sign, verify as p256_verify,
+    sign as p256_sign, verify as p256_verify, P256PrivateKey, P256PublicKey, P256SharedSecret,
+    P256Signature, SEP256PrivateKey, P256,
 };
 
 pub use p384::{
-    P384, P384PrivateKey, P384PublicKey, P384SharedSecret, P384Signature,
     generate_keypair as p384_generate_keypair, key_agreement as p384_key_agreement,
-    sign as p384_sign, verify as p384_verify,
+    sign as p384_sign, verify as p384_verify, P384PrivateKey, P384PublicKey, P384SharedSecret,
+    P384Signature, P384,
 };
 
 pub use p521::{
-    P521, P521PrivateKey, P521PublicKey, P521SharedSecret, P521Signature,
     generate_keypair as p521_generate_keypair, key_agreement as p521_key_agreement,
-    sign as p521_sign, verify as p521_verify,
+    sign as p521_sign, verify as p521_verify, P521PrivateKey, P521PublicKey, P521SharedSecret,
+    P521Signature, P521,
 };

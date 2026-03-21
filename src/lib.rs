@@ -118,7 +118,7 @@ pub use hashing::{
 };
 
 // Re-export HMAC-related items
-pub use authentication::{HMAC, hmac_sha1, hmac_sha256, hmac_sha384, hmac_sha512};
+pub use authentication::{hmac_sha1, hmac_sha256, hmac_sha384, hmac_sha512, HMAC};
 
 // Re-export symmetric encryption items
 pub use symmetric::aes::{

@@ -5,13 +5,12 @@
 //! cryptography algorithms.
 
 use apple_cryptokit::{
-    Result,
     // Asymmetric Cryptography
     asymmetric::p256::{generate_keypair, sign, verify},
     // HMAC Authentication
     authentication::hmac_sha256,
     // Hashing
-    hashing::{HashAlgorithm, HashFunction, SHA256, sha256_hash},
+    hashing::{sha256_hash, HashAlgorithm, HashFunction, SHA256},
     // Key Derivation
     key_derivation::hkdf_sha256_derive,
     // Post-Quantum Cryptography
@@ -21,6 +20,7 @@ use apple_cryptokit::{
     },
     // Symmetric Encryption
     symmetric::aes::{aes_gcm_decrypt, aes_gcm_encrypt},
+    Result,
 };
 
 fn main() -> Result<()> {

@@ -4,17 +4,19 @@
 //! provided by the apple-cryptokit-rs library.
 
 use apple_cryptokit::{
-    Result,
     // HMAC Authentication
     authentication::hmac_sha256,
     // Hashing
-    hashing::{HashFunction, SHA256, sha256_hash},
+    hashing::{sha256_hash, HashFunction, SHA256},
     // Key Derivation
     key_derivation::hkdf_sha256_derive,
     // Symmetric Encryption
     symmetric::aes::{aes_gcm_decrypt, aes_gcm_encrypt},
-    symmetric::chacha::{chacha20poly1305_encrypt, chacha20poly1305_decrypt, ChaChaKey, ChaChaPolyNonce, ChaChaPoly},
+    symmetric::chacha::{
+        chacha20poly1305_decrypt, chacha20poly1305_encrypt, ChaChaKey, ChaChaPoly, ChaChaPolyNonce,
+    },
     symmetric::AuthenticatedCipher,
+    Result,
 };
 
 fn main() -> Result<()> {
@@ -149,7 +151,11 @@ fn chacha20poly1305_examples() -> Result<()> {
     println!("Random key generation: Success");
     println!(
         "Seal/Open with generated key: {}\n",
-        if message == opened.as_slice() { "Success" } else { "Failed" }
+        if message == opened.as_slice() {
+            "Success"
+        } else {
+            "Failed"
+        }
     );
 
     Ok(())
